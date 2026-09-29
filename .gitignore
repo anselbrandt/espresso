@@ -1,0 +1,3 @@
+.pio/
+.DS_Store
+firmware/include/secrets.h
