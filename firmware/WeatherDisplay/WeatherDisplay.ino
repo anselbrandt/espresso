@@ -33,7 +33,7 @@
  * when it slides in.
  *
  * The espresso screen is a placeholder until the two MAX31865 / PT1000 sensors
- * are wired: boiler and group head, both reading "---.-".
+ * are wired: boiler and group head show fixed values, 125.0 and 100.0.
  *
  * Needs `include/secrets.h` — copy `secrets.h.example`. 2.4 GHz only; the S3
  * has no 5 GHz radio.
@@ -115,8 +115,9 @@ static Location LOCS[] = {
 };
 static const int LOC_COUNT = sizeof(LOCS) / sizeof(LOCS[0]);
 
-// The espresso machine's two surface temperatures, top row first. Placeholders
-// until the sensors are wired: `haveReading` stays false and each shows "---.-".
+// The espresso machine's two surface temperatures, top row first. Fixed
+// placeholder values until the sensors are wired; a probe with no reading
+// shows "---.-".
 struct Probe {
     const char *name;
     float temp;
@@ -124,9 +125,12 @@ struct Probe {
 };
 
 static Probe PROBES[] = {
-    {"BOILER"},
-    {"GROUP HEAD"},
+    {"BOILER", 125.0f, true},
+    {"GROUP HEAD", 100.0f, true},
 };
+// False while PROBES[] holds placeholders: the screen says "no sensors" so the
+// fixed values are not mistaken for readings.
+static const bool SENSORS_WIRED = false;
 static const int PROBE_COUNT = sizeof(PROBES) / sizeof(PROBES[0]);
 
 // Screens, left to right: espresso, then one per location. Swiping left moves
@@ -362,6 +366,26 @@ static void drawDegree(TFT_eSprite &s, int16_t x, int16_t y, uint16_t colour)
     s.drawCircle(x, y, 7, colour);
 }
 
+// How far "°C" reaches right of a temperature's right edge: 36 px to the C,
+// plus the C's 33 px advance in FreeSans 24pt.
+static const int16_t CELSIUS_W = 36 + 33;
+
+// "°C" after a font 8 temperature drawn right-aligned at (tempRight, tempY).
+// The C is FreeSans 24pt, the Helvetica-like face nearest font 8's Arial
+// digits: 34 px to its top. The numbered fonts have nothing between font 4's
+// ~19 px capitals and fonts 6/7/8, which have no letters at all -- a font 6 "C"
+// draws as a blank. Placed on its baseline so its top sits level with the top
+// of the degree ring.
+static void drawCelsius(TFT_eSprite &s, int16_t tempRight, int16_t tempY, uint16_t colour)
+{
+    drawDegree(s, tempRight + 22, tempY + 12, colour);
+    s.setFreeFont(&FreeSans24pt7b);
+    s.setTextDatum(L_BASELINE);
+    s.setTextColor(colour, COL_BG);
+    s.drawString("C", tempRight + 36, tempY + 4 + 34);
+    s.setFreeFont(nullptr); // back to the numbered fonts
+}
+
 static void renderWeather(int idx)
 {
     TFT_eSprite &s = page[idx];
@@ -411,10 +435,7 @@ static void renderWeather(int idx)
     s.setTextColor(haveReading ? COL_TEXT : COL_LABEL, COL_BG);
     s.drawString(temp, tempRight, tempY, 8);
 
-    drawDegree(s, tempRight + 22, tempY + 12, COL_TEXT);
-    s.setTextDatum(TL_DATUM);
-    s.setTextColor(COL_TEXT, COL_BG);
-    s.drawString("C", tempRight + 36, tempY + 4, 6);
+    drawCelsius(s, tempRight, tempY, COL_TEXT);
 
     // Rain or snow, just left of the digits. Placed off the rendered width
     // rather than at a fixed x, so it sits the same distance from "9.4" as from
@@ -476,18 +497,12 @@ static void renderEspresso()
     s.setTextColor(COL_LABEL, COL_BG);
     s.drawString("ESPRESSO", 14, 10, 4);
 
-    bool anyReading = false;
-    for (int i = 0; i < PROBE_COUNT; i++) {
-        anyReading |= PROBES[i].haveReading;
-    }
-    if (!anyReading) {
+    if (!SENSORS_WIRED) {
         s.setTextDatum(TR_DATUM);
         s.drawString("no sensors", W - 14, 10, 4);
     }
 
-    // Font 6 has no letters, so the unit is font 4 here. Room is left on the
-    // right for the degree sign and "C".
-    const int16_t tempRight = W - 14 - s.textWidth("C", 4) - 36;
+    const int16_t tempRight = W - 14 - CELSIUS_W;
     for (int i = 0; i < PROBE_COUNT; i++) {
         const Probe &p = PROBES[i];
         const int16_t rowY = 50 + i * 95; // two 75 px rows in the 200 px below the header
@@ -507,9 +522,7 @@ static void renderEspresso()
         s.setTextColor(colour, COL_BG);
         s.drawString(temp, tempRight, rowY, 8);
 
-        drawDegree(s, tempRight + 22, rowY + 12, colour);
-        s.setTextDatum(TL_DATUM);
-        s.drawString("C", tempRight + 36, rowY + 4, 4);
+        drawCelsius(s, tempRight, rowY, colour);
     }
 }
 

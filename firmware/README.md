@@ -9,7 +9,8 @@ side:
 ```
 
 - **Espresso** -- boiler and group head temperature. A placeholder for now:
-  both rows read `---.-` until the two MAX31865 / PT1000 sensors are wired.
+  both rows show fixed values (125.0 and 100.0) until the two MAX31865 / PT1000
+  sensors are wired.
 - **Montreal** and **Vancouver** -- current temperature, humidity and rain/snow,
   read straight from Environment Canada over WiFi.
 
@@ -94,13 +95,15 @@ is read with `getString()` instead, which decodes them. That buffers the whole
 ### The espresso screen
 
 Two rows, `BOILER` over `GROUP HEAD`, each a name on the left and a font 8
-temperature on the right, from the `PROBES[]` table in the sketch. Nothing
-fills it yet: `haveReading` stays false, both show `---.-` in grey and the
-status line says `no sensors`. Wiring the sensors means setting `temp` and
-`haveReading` on each probe; the screen already renders a real reading in white.
+temperature on the right, from the `PROBES[]` table in the sketch. Until the
+sensors are wired, that table holds fixed placeholders -- boiler `125.0`, group
+head `100.0` -- and the status line says `no sensors` (`SENSORS_WIRED` is false).
+Wiring them means updating `temp` and `haveReading` on each probe and setting
+`SENSORS_WIRED`. A probe without a reading shows `---.-` in grey.
 
-The unit here is `C` in font 4, not font 6: font 6 only has digits, `: - . a p m`,
-so a font 6 `C` renders as a blank -- which is what the weather screens draw.
+The `C` on every screen is FreeSans 24pt, drawn by `drawCelsius()`. The
+numbered fonts offer nothing between font 4's ~19 px capitals and font 6, which
+only has digits and `: - . a p m` -- a font 6 `C` renders as a blank.
 
 ### Three screens and the swipe
 
